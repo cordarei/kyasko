@@ -1,0 +1,142 @@
+#+title: KYASKO
+#+startup: showeverything
+#+property: header-args :noweb yes :mkdirp yes
+
+* Architecture
+
+* Playground
+
+To get started, here is some space to just write whatever code:
+
+#+BEGIN_SRC c++
+
+#include <string>
+#include <vector>
+#include <iostream>
+
+template <typename T, typename Tag>
+struct numeric_id_t {
+  using self_type = numeric_id_t<T,Tag>;
+  using value_type = T;
+  using tag_type = Tag;
+
+  T value;
+
+  bool operator==(self_type other) { return value == other.value; }
+  bool operator!=(self_type other) { return value != other.value; }
+  bool operator<(self_type other) { return value < other.value; }
+  bool operator<=(self_type other) { return value <= other.value; }
+  bool operator>(self_type other) { return value > other.value; }
+  bool operator>=(self_type other) { return value >= other.value; }
+};
+
+
+struct word_id_tag;
+using word_t = numeric_id_t<int, word_id_tag>;
+
+struct pos_id_tag;
+using pos_t = numeric_id_t<int, pos_id_tag>;
+
+#+END_SRC
+
+* Infrastructure
+
+** Build System
+
+This software is written in C++ and built using CMake.
+
+*** Main Project
+
+#+BEGIN_SRC cmake :tangle CMakeLists.txt
+cmake_minimum_required(VERSION 2.8)
+project(kyasko CXX)
+
+if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++1z -stdlib=libc++ -fmodules")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lc++abi")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lc++abi")
+  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -fno-inline -g3 -fstack-protector-all")
+  set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -g0 -march=native -mtune=native -DNDEBUG")
+else()
+  message(FATAL_ERROR "Use Clang!")
+endif()
+
+<<executables>>
+#+END_SRC
+
+*** Example Program
+
+This is an example program, to test compiling with the build system.
+It prints out “Hello, world!”.
+
+#+BEGIN_SRC c++ :tangle example/main.cc
+#include <iostream>
+
+int main()
+{
+  std::cout << "Hello, world!" << std::endl;
+  return 0;
+}
+#+END_SRC
+
+To build it, we need to add it to the list of exectuables in our CMake file:
+
+#+BEGIN_SRC cmake :noweb-ref executables
+add_executable(hello example/main.cc)
+#+END_SRC
+
+*** Setting up a build
+
+To set up a build for the first time on a new machine (or to rebuild
+from a clean slate), tangle this file and then run the following code
+block:
+
+#+BEGIN_SRC sh :results verbatim
+#!/bin/sh
+
+rm -rf build
+mkdir build
+cd build
+cmake .. -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# optionally make and run example executable:
+make && ./hello
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+-- The CXX compiler identification is Clang 3.7.0
+-- Check for working CXX compiler: /usr/bin/clang++
+-- Check for working CXX compiler: /usr/bin/clang++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/joseph/Git/kyasko/src/build
+Scanning dependencies of target hello
+[ 50%] Building CXX object CMakeFiles/hello.dir/example/main.cc.o
+[100%] Linking CXX executable hello
+[100%] Built target hello
+Hello, world!
+#+end_example
+
+You should see the results with the output from CMake.
+
+** Git Ignore
+
+This =.org= file is used to generate all the source files and support
+files for this package, so we generate a =.gitignore= file that simply
+ignores all files except this one, including the =.gitignore= file
+itself! (I got this idea from [[http://gittup.org/tup/][tup]].)
+
+Any other files which are created outside this =.org= file and need to
+be added to source control should be appended below on a line
+beginning with ‘!’.
+
+#+BEGIN_SRC fundamental :tangle .gitignore
+*
+!kyasko.org
+!README.md
+!COPYING
+#+END_SRC

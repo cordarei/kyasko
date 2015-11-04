@@ -1,0 +1,461 @@
+#+title: Saving PTB data to SQLite DB
+
+The example data:
+#+BEGIN_EXAMPLE
+( (S 
+    (NP-SBJ 
+      (NP (NNP Pierre) (NNP Vinken) )
+      (, ,) 
+      (ADJP 
+        (NP (CD 61) (NNS years) )
+        (JJ old) )
+      (, ,) )
+    (VP (MD will) 
+      (VP (VB join) 
+        (NP (DT the) (NN board) )
+        (PP-CLR (IN as) 
+          (NP (DT a) (JJ nonexecutive) (NN director) ))
+        (NP-TMP (NNP Nov.) (CD 29) )))
+    (. .) ))
+( (S 
+    (NP-SBJ (NNP Mr.) (NNP Vinken) )
+    (VP (VBZ is) 
+      (NP-PRD 
+        (NP (NN chairman) )
+        (PP (IN of) 
+          (NP 
+            (NP (NNP Elsevier) (NNP N.V.) )
+            (, ,) 
+            (NP (DT the) (NNP Dutch) (VBG publishing) (NN group) )))))
+    (. .) ))
+#+END_EXAMPLE
+
+Categories:
+
+| Row | Category | Lexical | Freq |
+|-----+----------+---------+------|
+|   1 | NP       |       0 |   12 |
+|   2 | NNP      |       1 |    8 |
+|   3 | NN       |       1 |    4 |
+|   4 | ,        |       1 |    3 |
+|   5 | DT       |       1 |    3 |
+|   6 | VP       |       0 |    3 |
+|   7 | .        |       1 |    2 |
+|   8 | CD       |       1 |    2 |
+|   9 | IN       |       1 |    2 |
+|  10 | JJ       |       1 |    2 |
+|  11 | S        |       0 |    2 |
+|  12 | PP       |       0 |    2 |
+|  13 | ADJP     |       0 |    1 |
+|  14 | MD       |       1 |    1 |
+|  15 | NNS      |       1 |    1 |
+|  16 | VB       |       1 |    1 |
+|  17 | VBG      |       1 |    1 |
+|  18 | VBZ      |       1 |    1 |
+#+TBLFM: $1=vlen(@I..0)
+
+Word Forms:
+
+| Row | Word         | Freq |
+|-----+--------------+------|
+|   1 | ,            |    3 |
+|   2 | .            |    2 |
+|   3 | 29           |    1 |
+|   4 | 61           |    1 |
+|   5 | Dutch        |    1 |
+|   6 | Elsevier     |    1 |
+|   7 | Mr.          |    1 |
+|   8 | N.V.         |    1 |
+|   9 | Nov.         |    1 |
+|  10 | Pierre       |    1 |
+|  11 | Vinken       |    2 |
+|  12 | a            |    1 |
+|  13 | as           |    1 |
+|  14 | board        |    1 |
+|  15 | chairman     |    1 |
+|  16 | director     |    1 |
+|  17 | group        |    1 |
+|  18 | is           |    1 |
+|  19 | join         |    1 |
+|  20 | nonexecutive |    1 |
+|  21 | of           |    1 |
+|  22 | old          |    1 |
+|  23 | publishing   |    1 |
+|  24 | the          |    2 |
+|  25 | will         |    1 |
+|  26 | years        |    1 |
+#+TBLFM: $1=vlen(@I..0)
+
+creating the database:
+
+#+BEGIN_SRC sql
+create table phrasal_categories (
+id integer primary key,
+label text not null unique check(length(label))
+);
+
+create table lexical_categories (
+id integer primary key,
+label text not null unique check(length(label))
+);
+
+create table function_tags (
+id integer primary key,
+label text not null unique check(length(label))
+);
+
+create table lexemes (
+id integer primary key,
+lexeme text not null unique check(length(lexeme))
+);
+
+create table sentences (
+id integer primary key,
+filename text,
+"section" integer,
+file_number integer,
+sentence_number integer,
+unique("section", file_number, sentence_number)
+);
+
+create table tokens (
+id integer primary key,
+sent_id integer not null references sentences(id),
+token_number integer not null,
+lexeme_id integer not null references lexemes(id),
+pos_id integer not null references lexical_categories(id),
+unique(sent_id,token_number)
+);
+
+create table tree_nodes (
+id integer primary key,
+sent_id integer not null references sentences(id),
+parent_id integer references tree_nodes(id),
+preorder_num integer not null,
+sibling_num integer not null,
+depth integer,
+height integer,
+begin integer,
+end integer,
+head integer,
+unique(sent_id, preorder_num),
+unique(sent_id, parent_id, sibling_num)
+);
+
+create table phrase_nodes (
+node_id integer primary key references tree_nodes(id),
+category_id integer not null references phrasal_categories(id)
+);
+
+create table leaf_nodes (
+node_id integer primary key references tree_nodes(id),
+token_id integer not null references tokens(id)
+);
+#+END_SRC
+
+Some dummy/test data:
+
+#+name: phrase-cats
+| NP   |
+| VP   |
+| S    |
+| PP   |
+| ADJP |
+
+#+name: lex-cats
+| NNP  |
+| NN   |
+| ,    |
+| DT   |
+| .    |
+| CD   |
+| IN   |
+| JJ   |
+| MD   |
+| NNS  |
+| VB   |
+| VBG  |
+| VBZ  |
+
+#+name: words
+| ,            |
+| .            |
+| 29           |
+| 61           |
+| Dutch        |
+| Elsevier     |
+| Mr.          |
+| N.V.         |
+| Nov.         |
+| Pierre       |
+| Vinken       |
+| a            |
+| as           |
+| board        |
+| chairman     |
+| director     |
+| group        |
+| is           |
+| join         |
+| nonexecutive |
+| of           |
+| old          |
+| publishing   |
+| the          |
+| will         |
+| years        |
+
+#+name: sents
+| "wsj_0000.mrg" | 0 | 0 | 1 |
+| "wsj_0000.mrg" | 0 | 0 | 2 |
+
+#+name: tokens
+| 1 |  0 | 10 |  1 |
+| 1 |  1 | 11 |  1 |
+| 1 |  2 |  1 |  3 |
+| 1 |  3 | 61 |  6 |
+| 1 |  4 | 26 | 10 |
+| 1 |  5 | 22 |  8 |
+| 1 |  6 |  1 |  3 |
+| 1 |  7 | 25 |  9 |
+| 1 |  8 | 19 | 11 |
+| 1 |  9 | 24 |  4 |
+| 1 | 10 | 14 |  2 |
+| 1 | 11 | 13 |  7 |
+| 1 | 12 | 12 |  4 |
+| 1 | 13 | 20 |  8 |
+| 1 | 14 | 16 |  2 |
+| 1 | 15 |  9 |  1 |
+| 1 | 16 |  3 |  6 |
+| 1 | 17 |  2 |  5 |
+| 2 |  0 |  7 |  1 |
+| 2 |  1 | 11 |  1 |
+| 2 |  2 | 18 | 13 |
+| 2 |  3 | 15 |  2 |
+| 2 |  4 | 21 |  7 |
+| 2 |  5 |  6 |  1 |
+| 2 |  6 |  8 |  1 |
+| 2 |  7 |  1 |  3 |
+| 2 |  8 | 24 |  4 |
+| 2 |  9 |  5 |  1 |
+| 2 | 10 | 23 | 12 |
+| 2 | 11 | 17 |  2 |
+| 2 | 12 |  2 |  5 |
+
+
+nodeid,sentid,parentid,preorder,siblingorder
+depth,height,begin,end,head
+
+#+name: tree-nodes
+|  1 | 1 | null |  1 | 1 | 0 | 6 |  0 | 18 |  7 | S      |     |              | S               |
+|  2 | 1 |    1 |  2 | 1 | 1 | 4 |  0 |  7 |  1 | NP-SBJ |     |              | NP-SBJ          |
+|  3 | 1 |    2 |  3 | 1 | 2 | 2 |  0 |  2 |  1 | NP     |     |              | NP              |
+|  4 | 1 |    3 |  4 | 1 | 3 | 1 |  0 |  1 |  0 |        | NNP | Pierre       | NNP Pierre      |
+|  5 | 1 |    3 |  5 | 2 | 3 | 1 |  1 |  2 |  1 |        | NNP | Vinken       | NNP Vinken      |
+|  6 | 1 |    2 |  6 | 2 | 2 | 1 |  2 |  3 |  2 |        | ,   | ,            | , ,             |
+|  7 | 1 |    2 |  7 | 3 | 2 | 3 |  3 |  6 |  5 | ADJP   |     |              | ADJP            |
+|  8 | 1 |    7 |  8 | 1 | 3 | 2 |  3 |  5 |  4 | NP     |     |              | NP              |
+|  9 | 1 |    8 |  9 | 1 | 4 | 1 |  3 |  4 |  3 |        | CD  | 61           | CD 61           |
+| 10 | 1 |    8 | 10 | 2 | 4 | 1 |  4 |  5 |  4 |        | NNS | years        | NNS years       |
+| 11 | 1 |    7 | 11 | 2 | 3 | 1 |  5 |  6 |  5 |        | JJ  | old          | JJ old          |
+| 12 | 1 |    2 | 12 | 4 | 2 | 1 |  6 |  7 |  6 |        | ,   | ,            | , ,             |
+| 13 | 1 |    1 | 13 | 2 | 1 | 5 |  7 | 17 |  7 | VP     |     |              | VP              |
+| 14 | 1 |   13 | 14 | 1 | 2 | 1 |  7 |  8 |  7 |        | MD  | will         | MD will         |
+| 15 | 1 |   13 | 15 | 2 | 2 | 4 |  8 | 17 |  8 | VP     |     |              | VP              |
+| 16 | 1 |   15 | 16 | 1 | 3 | 1 |  8 |  9 |  8 |        | VB  | join         | VB join         |
+| 17 | 1 |   15 | 17 | 2 | 3 | 2 |  9 | 11 | 10 | NP     |     |              | NP              |
+| 18 | 1 |   17 | 18 | 1 | 4 | 1 |  9 | 10 |  9 |        | DT  | the          | DT the          |
+| 19 | 1 |   17 | 19 | 2 | 4 | 1 | 10 | 11 | 10 |        | NN  | board        | NN board        |
+| 20 | 1 |   15 | 20 | 3 | 3 | 3 | 11 | 15 | 11 | PP-CLR |     |              | PP-CLR          |
+| 21 | 1 |   20 | 21 | 1 | 4 | 1 | 11 | 12 | 11 |        | IN  | as           | IN as           |
+| 22 | 1 |   20 | 22 | 2 | 4 | 2 | 12 | 15 | 14 | NP     |     |              | NP              |
+| 23 | 1 |   22 | 23 | 1 | 5 | 1 | 12 | 13 | 12 |        | DT  | a            | DT a            |
+| 24 | 1 |   22 | 24 | 2 | 5 | 1 | 13 | 14 | 13 |        | JJ  | nonexecutive | JJ nonexecutive |
+| 25 | 1 |   22 | 25 | 3 | 5 | 1 | 14 | 15 | 14 |        | NN  | director     | NN director     |
+| 26 | 1 |   15 | 26 | 4 | 4 | 2 | 15 | 17 | 15 | NP-TMP |     |              | NP-TMP          |
+| 27 | 1 |   26 | 27 | 1 | 5 | 1 | 15 | 16 | 15 |        | NNP | Nov.         | NNP Nov.        |
+| 28 | 1 |   26 | 28 | 2 | 5 | 1 | 16 | 17 | 16 |        | CD  | 29           | CD 29           |
+| 29 | 1 |    1 | 29 | 3 | 1 | 1 | 17 | 18 | 17 |        | .   | .            | . .             |
+| 30 | 2 | null |  1 | 1 | 0 | 7 |  0 | 13 |  2 | S      |     |              | S               |
+| 31 | 2 |   30 |  2 | 1 | 1 | 2 |  0 |  2 |  1 | NP-SBJ |     |              | NP-SBJ          |
+| 32 | 2 |   31 |  3 | 1 | 2 | 1 |  0 |  1 |  0 |        | NNP | Mr.          | NNP Mr.         |
+| 33 | 2 |   31 |  4 | 2 | 2 | 1 |  1 |  2 |  1 |        | NNP | Vinken       | NNP Vinken      |
+| 34 | 2 |   30 |  5 | 2 | 1 | 6 |  2 | 12 |  2 | VP     |     |              | VP              |
+| 35 | 2 |   34 |  6 | 1 | 2 | 1 |  2 |  3 |  2 |        | VBZ | is           | VBZ is          |
+| 36 | 2 |   34 |  7 | 2 | 2 | 5 |  3 | 12 |  3 | NP-PRD |     |              | NP-PRD          |
+| 37 | 2 |   36 |  8 | 1 | 3 | 2 |  3 |  4 |  3 | NP     |     |              | NP              |
+| 38 | 2 |   37 |  9 | 1 | 4 | 1 |  3 |  4 |  3 |        | NN  | chairman     | NN chairman     |
+| 39 | 2 |   36 | 10 | 2 | 3 | 4 |  4 | 12 |  4 | PP     |     |              | PP              |
+| 40 | 2 |   39 | 11 | 1 | 4 | 1 |  4 |  5 |  4 |        | IN  | of           | IN of           |
+| 41 | 2 |   39 | 12 | 2 | 4 | 3 |  5 | 12 |  5 | NP     |     |              | NP              |
+| 42 | 2 |   41 | 13 | 1 | 5 | 2 |  5 |  8 |  5 | NP     |     |              | NP              |
+| 43 | 2 |   42 | 14 | 1 | 6 | 1 |  5 |  6 |  5 |        | NNP | Elsevier     | NNP Elsevier    |
+| 44 | 2 |   42 | 15 | 2 | 6 | 1 |  6 |  7 |  6 |        | NNP | N.V.         | NNP N.V.        |
+| 45 | 2 |   41 | 16 | 2 | 5 | 1 |  7 |  8 |  7 |        | ,   | ,            | , ,             |
+| 46 | 2 |   41 | 17 | 3 | 5 | 2 |  8 | 12 | 11 | NP     |     |              | NP              |
+| 47 | 2 |   46 | 18 | 1 | 6 | 1 |  8 |  9 |  8 |        | DT  | the          | DT the          |
+| 48 | 2 |   46 | 19 | 2 | 6 | 1 |  9 | 10 |  9 |        | NNP | Dutch        | NNP Dutch       |
+| 49 | 2 |   46 | 20 | 3 | 6 | 1 | 10 | 11 | 10 |        | VBG | publishing   | VBG publishing  |
+| 50 | 2 |   46 | 21 | 4 | 6 | 1 | 11 | 12 | 11 |        | NN  | group        | NN group        |
+| 51 | 2 |   30 | 22 | 3 | 1 | 1 | 12 | 13 | 12 |        | .   | .            | . .             |
+
+
+
+#+BEGIN_SRC elisp :var cs=phrase-cats ts=lex-cats ws=words ss=sents tks=tokens tns=tree-nodes
+(defun take (lst n)
+  (if (= n 0)
+      '()
+    (cons (car lst) (take (cdr lst) (- n 1)))))
+
+(defun ensure-string (arg)
+  (cond
+   ((null arg) "null")
+   ((numberp arg) (number-to-string arg))
+   (t arg)))
+
+(defun format-insert (stmt vals)
+  (apply #'concat (mapcar (lambda (xs) (apply #'format stmt xs)) vals)))
+
+(concat
+ (format-insert "insert into phrasal_categories(label) values ('%s');\n" cs)
+ (format-insert "insert into lexical_categories(label) values ('%s');\n" ts)
+ (format-insert "insert into lexemes(lexeme) values ('%s');\n" ws)
+ (format-insert "insert into sentences(filename, section, file_number, sentence_number) values ('%s', %d, %d, %d);\n" ss)
+ (format-insert "insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (%d, %d, %d, %d);\n" tks)
+ (format-insert "insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (%s, %s, %s, %s, %s);\n"
+                (mapcar (lambda (xs) (mapcar #'ensure-string (take xs 5))) tns))
+ )
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+insert into phrasal_categories(label) values ('NP');
+insert into phrasal_categories(label) values ('VP');
+insert into phrasal_categories(label) values ('S');
+insert into phrasal_categories(label) values ('PP');
+insert into phrasal_categories(label) values ('ADJP');
+insert into lexical_categories(label) values ('NNP');
+insert into lexical_categories(label) values ('NN');
+insert into lexical_categories(label) values (',');
+insert into lexical_categories(label) values ('DT');
+insert into lexical_categories(label) values ('.');
+insert into lexical_categories(label) values ('CD');
+insert into lexical_categories(label) values ('IN');
+insert into lexical_categories(label) values ('JJ');
+insert into lexical_categories(label) values ('MD');
+insert into lexical_categories(label) values ('NNS');
+insert into lexical_categories(label) values ('VB');
+insert into lexical_categories(label) values ('VBG');
+insert into lexical_categories(label) values ('VBZ');
+insert into lexemes(lexeme) values (',');
+insert into lexemes(lexeme) values ('.');
+insert into lexemes(lexeme) values ('29');
+insert into lexemes(lexeme) values ('61');
+insert into lexemes(lexeme) values ('Dutch');
+insert into lexemes(lexeme) values ('Elsevier');
+insert into lexemes(lexeme) values ('Mr.');
+insert into lexemes(lexeme) values ('N.V.');
+insert into lexemes(lexeme) values ('Nov.');
+insert into lexemes(lexeme) values ('Pierre');
+insert into lexemes(lexeme) values ('Vinken');
+insert into lexemes(lexeme) values ('a');
+insert into lexemes(lexeme) values ('as');
+insert into lexemes(lexeme) values ('board');
+insert into lexemes(lexeme) values ('chairman');
+insert into lexemes(lexeme) values ('director');
+insert into lexemes(lexeme) values ('group');
+insert into lexemes(lexeme) values ('is');
+insert into lexemes(lexeme) values ('join');
+insert into lexemes(lexeme) values ('nonexecutive');
+insert into lexemes(lexeme) values ('of');
+insert into lexemes(lexeme) values ('old');
+insert into lexemes(lexeme) values ('publishing');
+insert into lexemes(lexeme) values ('the');
+insert into lexemes(lexeme) values ('will');
+insert into lexemes(lexeme) values ('years');
+insert into sentences(filename, section, file_number, sentence_number) values ('wsj_0000.mrg', 0, 0, 1);
+insert into sentences(filename, section, file_number, sentence_number) values ('wsj_0000.mrg', 0, 0, 2);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 0, 10, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 1, 11, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 2, 1, 3);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 3, 61, 6);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 4, 26, 10);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 5, 22, 8);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 6, 1, 3);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 7, 25, 9);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 8, 19, 11);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 9, 24, 4);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 10, 14, 2);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 11, 13, 7);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 12, 12, 4);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 13, 20, 8);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 14, 16, 2);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 15, 9, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 16, 3, 6);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (1, 17, 2, 5);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 0, 7, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 1, 11, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 2, 18, 13);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 3, 15, 2);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 4, 21, 7);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 5, 6, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 6, 8, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 7, 1, 3);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 8, 24, 4);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 9, 5, 1);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 10, 23, 12);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 11, 17, 2);
+insert into tokens(sent_id, token_number, lexeme_id, pos_id) values (2, 12, 2, 5);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (1, 1, null, 1, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (2, 1, 1, 2, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (3, 1, 2, 3, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (4, 1, 3, 4, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (5, 1, 3, 5, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (6, 1, 2, 6, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (7, 1, 2, 7, 3);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (8, 1, 7, 8, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (9, 1, 8, 9, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (10, 1, 8, 10, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (11, 1, 7, 11, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (12, 1, 2, 12, 4);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (13, 1, 1, 13, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (14, 1, 13, 14, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (15, 1, 13, 15, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (16, 1, 15, 16, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (17, 1, 15, 17, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (18, 1, 17, 18, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (19, 1, 17, 19, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (20, 1, 15, 20, 3);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (21, 1, 20, 21, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (22, 1, 20, 22, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (23, 1, 22, 23, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (24, 1, 22, 24, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (25, 1, 22, 25, 3);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (26, 1, 15, 26, 4);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (27, 1, 26, 27, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (28, 1, 26, 28, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (29, 1, 1, 29, 3);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (30, 2, null, 1, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (31, 2, 30, 2, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (32, 2, 31, 3, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (33, 2, 31, 4, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (34, 2, 30, 5, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (35, 2, 34, 6, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (36, 2, 34, 7, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (37, 2, 36, 8, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (38, 2, 37, 9, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (39, 2, 36, 10, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (40, 2, 39, 11, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (41, 2, 39, 12, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (42, 2, 41, 13, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (43, 2, 42, 14, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (44, 2, 42, 15, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (45, 2, 41, 16, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (46, 2, 41, 17, 3);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (47, 2, 46, 18, 1);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (48, 2, 46, 19, 2);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (49, 2, 46, 20, 3);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (50, 2, 46, 21, 4);
+insert into tree_nodes(id, sent_id, parent_id, preorder_num, sibling_num) values (51, 2, 30, 22, 3);
+#+end_example
+

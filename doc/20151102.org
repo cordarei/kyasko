@@ -1,0 +1,29 @@
+One purpose of this research is to improve syntactic analysis of long sentences.
+Long sentences are inherently difficult to process; they have more complex
+syntax and present efficiency issues for super-linear algorithms. Another
+purpose of this research is to investigate methods to feed back information from
+syntactic processing into lower layers, possibly all the way to sentence
+boundary detection; in essence jointly processing all layers of structure from
+sentence boundaries through part-of-speech tags and parse trees and maybe even
+beyond into semantic layers such as SRL or semantic parsing or some such. This
+branch comes from the work in detecting so-called `independent' boundaries;
+since these boundaries are syntactic in nature, it is natural to use syntactic
+information to solve that problem, however using full syntactic parsing is
+performing exactly the computation which we would like to reduce by identifying
+these boundaries. Basically it is possible to analyze all possible spans
+(constituents; well-formed substrings) under a given, constant length in only
+linear time. Thus this information should be cheap enough to feed back into
+previous layers while still providing boost in accuracy. This line of thinking
+naturally finishes in a picture of information being processed incrementally,
+various types of information flowing back and forth `between' `layers', if that
+terminology even makes sense here.
+
+The above picture of processing makes a really attractive match with the idea of
+processing continuous, running text in a document in a holistic
+method/approach/manner. So that is currently the picture I have in my head.
+Since I'm working on the CRESTA project now apparently, applying this to
+scientific papers is a no-brainer. However any method claiming to be a parser
+ought to be evaluated on the standard WSJ datasets for comparison with other
+parsers. Therefore this promises to be a kind of two-pronged approach with two
+types of data. It would be nice to combine as much as possible; maybe Driden &
+Oepen's `Document Parsing' can help here.

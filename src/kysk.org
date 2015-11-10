@@ -1,4 +1,4 @@
-#+title: KYASKO
+#+title: KYSK
 #+startup: showeverything
 #+property: header-args :noweb yes :mkdirp yes
 
@@ -49,7 +49,7 @@ This software is written in C++ and built using CMake.
 
 #+BEGIN_SRC cmake :tangle CMakeLists.txt
 cmake_minimum_required(VERSION 2.8)
-project(kyasko CXX)
+project(kysk CXX)
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++1z -stdlib=libc++ -fmodules")
@@ -113,7 +113,7 @@ make && ./hello
 -- Detecting CXX compile features - done
 -- Configuring done
 -- Generating done
--- Build files have been written to: /home/joseph/Git/kyasko/src/build
+-- Build files have been written to: /home/joseph/Git/kysk/src/build
 Scanning dependencies of target hello
 [ 50%] Building CXX object CMakeFiles/hello.dir/example/main.cc.o
 [100%] Linking CXX executable hello
@@ -136,7 +136,7 @@ beginning with ‘!’.
 
 #+BEGIN_SRC fundamental :tangle .gitignore
 *
-!kyasko.org
+!kysk.org
 !README.md
 !COPYING
 #+END_SRC

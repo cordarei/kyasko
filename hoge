@@ -1,0 +1,98 @@
+#! /bin/sh
+#|
+exec racket -tm "$0" ${1+"$@"}
+|#
+#lang racket
+
+(require parser-tools/lex
+         (prefix-in : parser-tools/lex-sre)
+         parser-tools/yacc)
+
+(provide main)
+
+
+(define default-root-label "ROOT")
+
+;;----
+;; lexer
+(define-tokens label (LABEL))
+(define-empty-tokens delim (OP CP EOF))
+
+(define ptb-lexer
+  (lexer-src-pos
+   [(:+ whitespace) (return-without-pos (ptb-lexer input-port))]
+   [(:+ (:~ (:or whitespace #\( #\)))) (token-LABEL lexeme)]
+   [#\( 'OP]
+   [#\) 'CP]
+   [(eof) 'EOF]
+   ))
+
+;;----
+;; parser
+(define (format-parse-error tok-ok name val start-pos end-pos)
+  (format "parse error with token-ok?:~a name:~a val:~a from ~a to ~a~n" tok-ok name val start-pos end-pos))
+(define (display-parse-error tok-ok name val start-pos end-pos)
+  (display (format-parse-error tok-ok name val start-pos end-pos)))
+
+(define ptb-parser
+  (parser
+   (start sents)
+   (end EOF)
+   (src-pos)
+   (tokens label delim)
+   (error display-parse-error)
+   (grammar
+    (sents [(s sents) (cons $1 $2)]
+           [() null])
+    (s [(sexp) $1]
+       [(empty-root) $1])
+    (empty-root [(OP sexp CP) (list default-root-label $2)])
+    (sexp [(leaf) $1]
+          [(OP LABEL sexp-list CP) (cons $2 (reverse $3))])
+    (leaf [(OP LABEL LABEL CP) (list $2 $3)])
+    (sexp-list [() null]
+               [(sexp-list sexp) (cons $2 $1)])
+    )))
+
+(define (ptb-read port)
+  (ptb-parser (lambda () (ptb-lexer port))))
+
+
+(define (replace-void possibly-void replacement)
+  (if (void? possibly-void) replacement possibly-void))
+
+(define (fold-subtrees tree subtree-proc . state)
+  (match tree
+    [`(,parent ,children ...)
+     (let ([state (apply subtree-proc tree state)])
+       (for/fold ([state (replace-void state '())])
+                 ([child (in-list children)])
+         (replace-void (apply fold-subtrees child subtree-proc (list state))
+                       '())))]
+    [_ (if (null? state) state (car state))]))
+
+(define (maybe-car x)
+  (match x
+    [(list first rest ...) first]
+    [_ x]))
+
+(struct rule (head children) #:prefab)
+(define (subtree->rule tree)
+  (rule (car tree)
+        (map maybe-car (cdr tree))))
+
+
+(define main
+  (case-lambda
+    [(train-file)
+     (define sents (ptb-read (open-input-file train-file)))
+     (define rules (map subtree->rule
+                        (reverse (fold-subtrees (car sents)
+                                                cons
+                                                '()))))
+     (for [(r (in-list rules))]
+       (write r) (newline))
+     (void)
+     ]
+    [()
+     (displayln "Specify a file name.")]))

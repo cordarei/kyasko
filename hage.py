@@ -36,16 +36,30 @@ def make_grammar(trainfile):
     return rules
 
 def main(args):
+    probstr = lambda p: '{:.3f}'.format(p)
     trainfile,testfile = args
     rules = make_grammar(trainfile)
+    unaries = [r for r in rules if len(r.children) == 1]
     # rs = list((r,c,r.prob) for (r,c) in rules.most_common())
     # rs.sort(key=lambda x:x[2], reverse=True)
     # for r,c,p in rs:
     #     print(r, c, '{:.3f}'.format(p), sep='\t')
+    word = lambda s,i: next(s.words(i, i+1))
     sents = list(ptb.make_parsed_sent(t) for t in trees(testfile))
     indices = [(s,i) for s in sents for i in range(sum(1 for _ in s.words()))]
-    for s,i in indices:
-        print(i, next( s.words(i,i+1) ))
+    words = [word(s,i) for s,i in indices]
+    # for s,i in indices:
+    #     print(i, next( s.words(i,i+1) ))
+    chart = collections.defaultdict(lambda: collections.defaultdict(lambda:0.0))
+    agenda = collections.defaultdict(lambda: collections.defaultdict(lambda:0.0))
+    def update(d,x,p): d[x] = max(d[x], p)
+    for i in range(len(words)):
+        for r in unaries:
+            if r.children[0] == words[i]:
+                update(chart[(i,i+1)], r.head, r.prob)
+    for sp in chart:
+        for c in chart[sp]:
+            print(sp,c,probstr(chart[sp][c]), sep='\t')
 
 if __name__ == "__main__":
     main(sys.argv[1:])

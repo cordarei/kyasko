@@ -162,7 +162,7 @@ class TExpr:
     def rule(self):
         if self.leaf():
             # return '{} -> {}'.format(self.leaf().pos, self.leaf().word)
-            return Rule(self.leaf().pos, self.leaf().word)
+            return Rule(self.leaf().pos, [self.leaf().word])
         else:
             # return '{} -> {}'.format(self.symbol(), ' '.join(str(c.symbol() or c.leaf().pos) for c in self.children()))
             return Rule(self.symbol(), (str(c.symbol() or c.leaf().pos) for c in self.children()))
@@ -301,8 +301,8 @@ def all_rules(tx):
     Returns a list of the production rules in a tree.
     """
     def pre(tx, st):
-        if tx.leaf():
-            return st
+        # if tx.leaf():
+        #     return st
         return st + [tx.rule()]
     return traverse(tx, pre, state=[])
 

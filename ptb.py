@@ -129,6 +129,8 @@ class Rule:
 
     def __str__(self):
         return '{} -> {}'.format(self.head, ' '.join(self.children))
+    def __repr__(self):
+        return 'Rule:[{}]'.format(str(self))
 
 class Leaf:
     def __init__(self, word, pos):

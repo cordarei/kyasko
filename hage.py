@@ -99,6 +99,19 @@ def main(args):
     chart = collections.defaultdict(lambda: collections.defaultdict(lambda:(0.0,None,[])))
     agenda = collections.defaultdict(list)
 
+    def get_tree(chart, span, head):
+        # print('LOG: Called get_tree with span={} head={}'.format(span, head), file=sys.stderr)
+        p,r,os = chart[span][head]
+        # print('LOG: get_tree p={} r={} os={}'.format(p, r, os), file=sys.stderr)
+        if r.islex:
+            return '({} {})'.format(r.head, r.children[0])
+        cs = lambda: zip(r.children, [span[0]] + os, os + [span[1]])
+        # print('LOG: get_tree cs={}'.format(list(cs())), file=sys.stderr)
+        return '({} {})'.format(
+            head,
+            ' '.join(get_tree(chart, (b,e), c) for c,b,e in cs())
+        )
+
     def complete(rule, span, prob, offsets):
         if chart[span][rule.head][0] < prob:
             chart[span][rule.head] = (prob, rule, offsets)
@@ -106,10 +119,7 @@ def main(args):
                 complete(r, span, prob * r.prob, [])
             for r in left_corner.get(rule.head, []):
                 agenda[(span)].append((r, 1, prob * r.prob, [span[1]]))
-                # if len(r.children) > 1:
-                #     agenda[(span)].append((r, 1, prob * r.prob, [span[1]]))
-                # else:
-                #     pass
+
     for i in range(len(words)):
         for r in lexrules:
             if r.children[0] == words[i]:
@@ -128,9 +138,13 @@ def main(args):
                             agenda[(i,i+l)].append((r, dot+1, q, off+[i+l]))
 
 
+    # for sp in sorted(chart):
+    #     for c in chart[sp]:
+    #         print(sp, c, probstr(chart[sp][c][0]), ' '.join(words[sp[0]:sp[1]]), sep='\t')
     for sp in sorted(chart):
-        for c in chart[sp]:
-            print(sp, c, probstr(chart[sp][c][0]), ' '.join(words[sp[0]:sp[1]]), sep='\t')
+        if sp[1] - sp[0] > 1:
+            for c in chart[sp]:
+                print(get_tree(chart, sp, c))
 
 if __name__ == "__main__":
     main(sys.argv[1:])

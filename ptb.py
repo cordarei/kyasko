@@ -114,15 +114,15 @@ class Symbol:
         return hash(str(self))
 
 class Rule:
-    def __init__(self, head, children, p=1.0):
+    def __init__(self, head, children, p=1.0, islex=False):
         self.head = str(head)
         self.children = list(str(c) for c in children)
         self.prob = p
-        self.islex = False
-        cs = list(children)
-        if (len(cs) == 1 and
-            not isinstance(cs[0], Symbol)):
-            self.islex = True
+        self.islex = islex
+        # cs = list(children)
+        # if (len(cs) == 1 and
+        #     not isinstance(cs[0], Symbol)):
+        #     self.islex = True
 
     def __eq__(self, other):
         try:
@@ -170,7 +170,7 @@ class TExpr:
     def rule(self):
         if self.leaf():
             # return '{} -> {}'.format(self.leaf().pos, self.leaf().word)
-            return Rule(self.leaf().pos, [self.leaf().word])
+            return Rule(self.leaf().pos, [self.leaf().word], islex=True)
         else:
             # return '{} -> {}'.format(self.symbol(), ' '.join(str(c.symbol() or c.leaf().pos) for c in self.children()))
             return Rule(self.symbol(), (str(c.symbol() or c.leaf().pos) for c in self.children()))

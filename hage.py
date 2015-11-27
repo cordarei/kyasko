@@ -115,7 +115,7 @@ def main(args):
             if r.children[0] == words[i]:
                 complete(r, (i,i+1), r.prob, [])
     for l in range(2, MAX_CONSTITUENT_LENGTH + 1):
-        for i in range(len(words) - l):
+        for i in range(len(words) - l + 1):
             for k in range(i+1, i+l):
                 for r,dot,p,off in agenda[(i,k)]:
                     if dot >= len(r.children): print ("Error:",r,dot)

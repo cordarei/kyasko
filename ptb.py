@@ -110,13 +110,19 @@ class Symbol:
 
     def __eq__(self, other):
         return str(self) == str(other)
-    def __hash(self):
-        return hash(self)
+    def __hash__(self):
+        return hash(str(self))
 
 class Rule:
-    def __init__(self, head, children):
+    def __init__(self, head, children, p=1.0):
         self.head = str(head)
         self.children = list(str(c) for c in children)
+        self.prob = p
+        self.islex = False
+        cs = list(children)
+        if (len(cs) == 1 and
+            not isinstance(cs[0], Symbol)):
+            self.islex = True
 
     def __eq__(self, other):
         try:

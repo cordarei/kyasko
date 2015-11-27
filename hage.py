@@ -44,38 +44,75 @@ def main(args):
     probstr = lambda p: '{:.5f}'.format(p) if p > 0.0 else '#ZERO#'
     trainfile,testfile = args
     rules = make_grammar(trainfile)
-    left_corner = gather(rules, lambda r:r.children[0])
-    unaries = [r for r in rules if len(r.children) == 1]
+    left_corner = gather(
+        (r for r in rules if r.children[1:]),
+        lambda r:r.children[0]
+    )
+    lexrules = [r for r in rules if r.islex]
+    unary_rules = [r for r in rules if len(r.children) == 1 and not r.islex]
+    unary_matrix = dict(((r.head, r.children[0]), r.prob) for r in unary_rules)
+
+    def closure(path, cur):
+        rs = [r for r in unary_rules if r.children[0] == cur]
+        xs = [(r,c) for r in rs for c in path]
+        upd = dict()
+        for r,c in xs:
+            edge = (r.head, c)
+            p = unary_matrix[(cur,c)] * r.prob
+            if edge not in unary_matrix:
+                upd[edge] = p
+            elif unary_matrix[edge] < p:
+                upd[edge] = p
+            else:
+                pass
+        unary_matrix.update(upd)
+        for h,c in upd:
+            closure(path + [cur], h)
+
+    # before = dict(unary_matrix)
+    for r in unary_rules:
+        closure(r.children, r.head)
+    closed_unary_rules = dict(
+        (c, [ptb.Rule(h, [c], unary_matrix[(h,c)]) for h,k in unary_matrix if k == c])
+        for c in set(c for h,c in unary_matrix)
+    )
+
+    # for edge in unary_matrix:
+    #     if edge in before and unary_matrix[edge] == before[edge]:
+    #         print('SAME:', edge)
+    #     elif edge in before:
+    #         print('CHANGED:', edge, before[edge], '->', unary_matrix[edge])
+    #     else:
+    #         print('NEW:', edge, unary_matrix[edge])
+    # CHANGED: ('ROOT', 'SBAR') 0.0005027652086475615 -> 0.0005586280096084018
+
     # rs = list((r,c,r.prob) for (r,c) in rules.most_common())
     # rs.sort(key=lambda x:x[2], reverse=True)
     # for r,c,p in rs:
     #     print(r, c, '{:.3f}'.format(p), sep='\t')
+
     word = lambda s,i: next(s.words(i, i+1))
     sents = list(ptb.make_parsed_sent(t) for t in trees(testfile))
     indices = [(s,i) for s in sents for i in range(sum(1 for _ in s.words()))]
     words = [word(s,i) for s,i in indices]
-    # for s,i in indices:
-    #     print(i, next( s.words(i,i+1) ))
-    chart = collections.defaultdict(lambda: collections.defaultdict(lambda:(0.0,[])))
+
+    chart = collections.defaultdict(lambda: collections.defaultdict(lambda:(0.0,None,[])))
     agenda = collections.defaultdict(list)
-    # def update(d,x,p):
-    #     if (d[x][0] < p):
-    #         d[x] = (p, [])
-    # def introduce(rule, span, p):
-    #     agenda[(span)].append((rule, 1, [span[1]], p))
+
     def complete(rule, span, prob, offsets):
         if chart[span][rule.head][0] < prob:
-            chart[span][rule.head] = (prob, offsets)
+            chart[span][rule.head] = (prob, rule, offsets)
+            for r in closed_unary_rules.get(rule.head, []):
+                complete(r, span, prob * r.prob, [])
             for r in left_corner.get(rule.head, []):
-                # introduce(r, span, prob * r.prob)
-                if len(r.children) > 1:
-                    agenda[(span)].append((r, 1, prob * r.prob, [span[1]]))
-                else:
-                    pass
+                agenda[(span)].append((r, 1, prob * r.prob, [span[1]]))
+                # if len(r.children) > 1:
+                #     agenda[(span)].append((r, 1, prob * r.prob, [span[1]]))
+                # else:
+                #     pass
     for i in range(len(words)):
-        for r in unaries:
+        for r in lexrules:
             if r.children[0] == words[i]:
-                # update(chart[(i,i+1)], r.head, r.prob)
                 complete(r, (i,i+1), r.prob, [])
     for l in range(2, MAX_CONSTITUENT_LENGTH + 1):
         for i in range(len(words) - l):

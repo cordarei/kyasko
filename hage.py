@@ -41,7 +41,7 @@ def gather(xs, key):
     return dict((k,list(vs)) for k,vs in itertools.groupby(ys, key))
 
 def main(args):
-    probstr = lambda p: '{:.5f}'.format(p) if p > 0.0 else '#ZERO#'
+    probstr = lambda p: '{:.6g}'.format(p) if p > 0.0 else '#ZERO#'
     trainfile,testfile = args
     rules = make_grammar(trainfile)
     left_corner = gather(
@@ -144,7 +144,7 @@ def main(args):
     for sp in sorted(chart):
         if sp[1] - sp[0] > 1:
             for c in chart[sp]:
-                print(get_tree(chart, sp, c))
+                print(sp, c, probstr(chart[sp][c][0]), ' '.join(words[sp[0]:sp[1]]), get_tree(chart, sp, c), sep='\t')
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -50,6 +50,58 @@ def next_token(s):
             return (m,s)
     return (s, '')
 
+class Rule(object):
+    def __init__(self, pattern, action):
+        self.pattern = pattern
+        self.action = action
+
+    def __call__(self, s):
+        m = re.match(self.pattern, s)
+        if m:
+            return [self.action(m, s[m.end():])]
+        else:
+            return []
+
+    @staticmethod
+    def skip(m, s):
+        return ([], s)
+    @staticmethod
+    def ret(m, s):
+        return ([m.group()], s)
+
+class State(object):
+    def __init__(self, tokens, remaining):
+        self.tokens = tokens
+        self.remaining = remaining
+
+    def extend(self, rule):
+        res = rule(self.remaining)
+        if not res:
+            return []
+        t,s = res[0]
+        if t:
+            return [State(self.tokens + t, s)]
+        else:
+            return []
+
+def concat(ys):
+    xs = []
+    for y in ys:
+        xs.extend(y)
+    return xs
+
+def do_search(rules, s):
+    final_states = []
+    states = [State([], s)]
+    while states:
+        # ns = list(filter(lambda x: x, (st.extend(r) for r in rules for st in states)))
+        ns = concat(st.extend(r) for r in rules for st in states)
+        for st in ns:
+            if not st.remaining:
+                final_states.append(st)
+        states = [st for st in ns if st.remaining]
+
+    return final_states
 
 def paragraphs(f):
     para = []
@@ -67,10 +119,23 @@ def main(args):
     with open(fn) as f:
         for p in paragraphs(f):
             print('#PARA_START')
-            m,s = next_token(p)
-            while m and s:
-                print(m)
-                m,s = next_token(s)
+
+            rules = [
+                Rule('\s+', Rule.skip),
+                Rule('["\',]', Rule.ret),
+                Rule('-+', Rule.ret),
+                Rule('\w+', Rule.ret),
+                Rule('\W', Rule.ret)
+            ]
+            states = do_search(rules, p)
+            for st in states:
+                print(st.tokens)
+
+            # m,s = next_token(p)
+            # while m and s:
+            #     print(m)
+            #     m,s = next_token(s)
+            print()
 
 if __name__ == "__main__":
     main(sys.argv[1:])

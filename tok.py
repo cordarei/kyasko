@@ -3,6 +3,9 @@
 import sys
 import re
 
+def log(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 def break_token(tok):
     s = tok
     while s and s[0] in '"\'':
@@ -76,13 +79,17 @@ class State(object):
 
     def extend(self, rule):
         res = rule(self.remaining)
-        if not res:
-            return []
-        t,s = res[0]
-        if t:
-            return [State(self.tokens + t, s)]
-        else:
-            return []
+        return [
+            State(self.tokens + t, s)
+            for t,s in res
+        ]
+        # if not res:
+        #     return []
+        # t,s = res[0]
+        # return [State(self.tokens + t, s)]
+
+    def __repr__(self):
+        return "State<tokens:{} remaining:'{}'>".format(self.tokens, self.remaining)
 
 def concat(ys):
     xs = []
@@ -94,11 +101,16 @@ def do_search(rules, s):
     final_states = []
     states = [State([], s)]
     while states:
+        # log('states:',states)
         # ns = list(filter(lambda x: x, (st.extend(r) for r in rules for st in states)))
         ns = concat(st.extend(r) for r in rules for st in states)
+        # log('ns:',ns)
         for st in ns:
             if not st.remaining:
                 final_states.append(st)
+        # if not ns:
+        #     log('no more states!\nstates:\n', states)
+        #     log('ns:\n', ns)
         states = [st for st in ns if st.remaining]
 
     return final_states
@@ -122,10 +134,15 @@ def main(args):
 
             rules = [
                 Rule('\s+', Rule.skip),
-                Rule('["\',]', Rule.ret),
+                # Rule('["\',]', Rule.ret),
                 Rule('-+', Rule.ret),
                 Rule('\w+', Rule.ret),
-                Rule('\W', Rule.ret)
+                Rule('\'s', Rule.ret),
+                # Rule('\w+(-\w+)+', Rule.ret),
+                Rule('\w+(\.\w+)+', Rule.ret),
+                Rule('\w+(\.\w+)+\.', Rule.ret),
+                Rule('\w+\.', Rule.ret),
+                Rule('[^\w\s]', Rule.ret)
             ]
             states = do_search(rules, p)
             for st in states:

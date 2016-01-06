@@ -72,6 +72,7 @@
 (define (tokenize3 s)
   (let rec ([input s]
             [tokens '()])
+    ;(displayln input)
     (set! input (string-trim input #:right? #f))
     (if (string-empty? input)
         (list (reverse tokens))
@@ -80,15 +81,21 @@
                      [(pregexp #px"^(\\w+)(.*)$" (list _ word rest))
                       (rec rest (cons word tokens))]
                      ;; single punctuation character, comma etc
-                     [(pregexp #px"^([^\\w\\s])(.*)$" (list _ char rest))
+                     [(pregexp #px"^([^\\w\\s.])(.*)$" (list _ char rest))
+                      ;#:when (not (regexp-match #px"^\\w" rest))
+                      (rec rest (cons char tokens))]
+                     [(pregexp #px"^([.])(.*)$" (list _ char rest))
                       #:when (not (regexp-match #px"^\\w" rest))
                       (rec rest (cons char tokens))]
-                     ;; abbreviation (no sentence boundary)
+                     ;; initialism (no sentence boundary)
                      [(pregexp #px"^(([A-Za-z]\\.)+)(.*)$" (list _ word _ rest))
                       (rec rest (cons word tokens))]
-                     ;; abbreviation + sentence boundary
+                     ;; initialism + sentence boundary
                      [(pregexp #px"^(([A-Za-z]\\.)+)(.*)$" (list _ word _ rest))
                       (rec rest (cons "." (cons word tokens)))]
+                     ;; abbrev ("Calif." etc)
+                     [(pregexp #px"^([A-Z]\\w+)(.*)" (list _ word rest))
+                      (rec rest (cons word tokens))]
                      ))))
 
 

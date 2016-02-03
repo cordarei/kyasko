@@ -1,0 +1,94 @@
+# Thrax grammar for a non-deterministic tokenizer of English text
+
+
+# all ASCII 7-bit character codes except for [0] NUL
+# for reference -- probably unused
+ascii = Optimize[
+  "[1]" |   "[2]" |   "[3]" |   "[4]" |   "[5]" |   "[6]" |   "[7]" |   "[8]" |   "[9]" |  "[10]" |
+ "[11]" |  "[12]" |  "[13]" |  "[14]" |  "[15]" |  "[16]" |  "[17]" |  "[18]" |  "[19]" |  "[20]" |
+ "[21]" |  "[22]" |  "[23]" |  "[24]" |  "[25]" |  "[26]" |  "[27]" |  "[28]" |  "[29]" |  "[30]" |
+ "[31]" |  "[32]" |  "[33]" |  "[34]" |  "[35]" |  "[36]" |  "[37]" |  "[38]" |  "[39]" |  "[40]" |
+ "[41]" |  "[42]" |  "[43]" |  "[44]" |  "[45]" |  "[46]" |  "[47]" |  "[48]" |  "[49]" |  "[50]" |
+ "[51]" |  "[52]" |  "[53]" |  "[54]" |  "[55]" |  "[56]" |  "[57]" |  "[58]" |  "[59]" |  "[60]" |
+ "[61]" |  "[62]" |  "[63]" |  "[64]" |  "[65]" |  "[66]" |  "[67]" |  "[68]" |  "[69]" |  "[70]" |
+ "[71]" |  "[72]" |  "[73]" |  "[74]" |  "[75]" |  "[76]" |  "[77]" |  "[78]" |  "[79]" |  "[80]" |
+ "[81]" |  "[82]" |  "[83]" |  "[84]" |  "[85]" |  "[86]" |  "[87]" |  "[88]" |  "[89]" |  "[90]" |
+ "[91]" |  "[92]" |  "[93]" |  "[94]" |  "[95]" |  "[96]" |  "[97]" |  "[98]" |  "[99]" | "[100]" |
+"[101]" | "[102]" | "[103]" | "[104]" | "[105]" | "[106]" | "[107]" | "[108]" | "[109]" | "[110]" |
+"[111]" | "[112]" | "[113]" | "[114]" | "[115]" | "[116]" | "[117]" | "[118]" | "[119]" | "[120]" |
+"[121]" | "[122]" | "[123]" | "[124]" | "[125]" | "[126]" | "[127]"
+];
+
+# "printable" ASCII character codes -- does not include tab/linefeed/carriage
+# return, but does include space
+ascii_printable = Optimize[
+           "[32]" |  "[33]" |  "[34]" |  "[35]" |  "[36]" |  "[37]" |  "[38]" |  "[39]" |  "[40]" |
+ "[41]" |  "[42]" |  "[43]" |  "[44]" |  "[45]" |  "[46]" |  "[47]" |  "[48]" |  "[49]" |  "[50]" |
+ "[51]" |  "[52]" |  "[53]" |  "[54]" |  "[55]" |  "[56]" |  "[57]" |  "[58]" |  "[59]" |  "[60]" |
+ "[61]" |  "[62]" |  "[63]" |  "[64]" |  "[65]" |  "[66]" |  "[67]" |  "[68]" |  "[69]" |  "[70]" |
+ "[71]" |  "[72]" |  "[73]" |  "[74]" |  "[75]" |  "[76]" |  "[77]" |  "[78]" |  "[79]" |  "[80]" |
+ "[81]" |  "[82]" |  "[83]" |  "[84]" |  "[85]" |  "[86]" |  "[87]" |  "[88]" |  "[89]" |  "[90]" |
+ "[91]" |  "[92]" |  "[93]" |  "[94]" |  "[95]" |  "[96]" |  "[97]" |  "[98]" |  "[99]" | "[100]" |
+"[101]" | "[102]" | "[103]" | "[104]" | "[105]" | "[106]" | "[107]" | "[108]" | "[109]" | "[110]" |
+"[111]" | "[112]" | "[113]" | "[114]" | "[115]" | "[116]" | "[117]" | "[118]" | "[119]" | "[120]" |
+"[121]" | "[122]" | "[123]" | "[124]" | "[125]" | "[126]"
+];
+
+# "whitespace" character codes in ASCII -- includes control characters (tab etc)
+ascii_whitespace = Optimize[
+    " " | "\t" | "\n" | "\r"
+];
+
+digit = Optimize[
+    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+];
+
+lowercase = Optimize[
+    "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" |
+    "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+];
+
+uppercase = Optimize[
+    "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" |
+    "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+];
+
+alpha = Optimize[lowercase | uppercase];
+
+alphanumeric = Optimize[alpha | digit];
+
+
+fullstop = Optimize["."];
+question_mark = Optimize["?"];
+exclamation_mark = Optimize["!"];
+comma = Optimize[","];
+semicolon = Optimize[";"];
+colon = Optimize[":"];
+
+# dashes
+ascii_hyphen = Optimize["-"];
+hyphen_minus = ascii_hyphen;
+figure_dash = "‒".utf8;
+en_dash = "–".utf8;
+em_dash = "—".utf8;
+horizontal_bar = "―".utf8;
+soft_hyphen = "[192][173]"; #U+00AD utf8:0xC2 0xAD non-printable
+hyphen = "‐".utf8;
+non_breaking_hyphen = "‑".utf8;
+minus_sign = "−".utf8;
+
+hyphenation_point = "‧".utf8;
+middle_dot = "·".utf8;
+slash = "/".utf8;
+
+# brackets
+# quotation marks
+
+
+
+base_word = (uppercase | lowercase) lowercase* ;
+word_and_fullstop = base_word ("" | "" : "\n") fullstop ;
+
+word = base_word | word_and_fullstop ;
+
+export tokenize = word ( (ascii_whitespace+ : "\n") word )* ;
